@@ -21,7 +21,7 @@ Free to download captures/models are available at [Tone3000](https://www.tone300
 There is no more a reason to get yourself locked into an proprietary ecosystem.
 
 Guitar pedal / processor that plugs straight into **Mixer MIC input via XLR**. Of course it could be easily extended to provide
-different input/output possibilities.
+different input/output possibilities. And lastly, having to create captures would be a nice feature too.
 
 ## Software
 The pedal is running PiPedal SW from **https://github.com/rerdavies/pipedal**.
