@@ -24,7 +24,7 @@ Guitar pedal / processor that plugs straight into **Mixer MIC input via XLR**. O
 different input/output possibilities. And lastly, having to create captures would be a nice feature too.
 
 ## Software
-The pedal is running PiPedal SW from **https://github.com/rerdavies/pipedal**.
+The pedal is running [PiPedal](https://github.com/rerdavies/pipedal). Another option would be [MOD.audio](MOD.audio).
 
 ---
 
@@ -46,14 +46,14 @@ extended by an output volume control to tune the signal going to ADC to prevent 
 
 ## Core
 - Raspberry Pi **CM4 or CM5**
-- carrier board (with 40-pin header access) - https://www.waveshare.com/wiki/CM4-NANO-A or https://www.waveshare.com/wiki/CM5-NANO-A
-- Audio Codec Zero board (I2S audio). Other options are HifiBerry DAC+ ADC Pro (a bit bigger form factor)
+- carrier board (with 40-pin header access) - [CM4-NANO-A](https://www.waveshare.com/wiki/CM4-NANO-A) or [CM5-NANO-A](https://www.waveshare.com/wiki/CM5-NANO-A)
+- [Audio Codec Zero](https://www.raspberrypi.com/documentation/accessories/audio.html#raspberry-pi-codec-zero) board (I2S audio). Other options are HifiBerry DAC+ ADC Pro (a bit bigger form factor)
 
 ## Input (Guitar) + Buffer
 
 Recommended
   - TC Electronic Polytune
-  - https://www.musikding.de/Kliche-Buffer-kit
+  - [Kliche Buffer](https://www.musikding.de/Kliche-Buffer-kit)
 
 Feel free to use a different buffer or build a buffer circuit yourself.
 
