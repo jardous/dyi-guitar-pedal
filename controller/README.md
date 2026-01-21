@@ -1,6 +1,6 @@
 # Controller daemon
 
-Handles the button clicks and send MIDI messages to PiPedal.
+Handles the button clicks and send MIDI messages to PiPedal. Simple press and long press result in different MIDI NoteOn are sent.
 
 ## Install dependencies
 ```
@@ -15,3 +15,4 @@ add line
 ```
 @reboot /usr/bin/python3 -u /home/pi/controller-daemon.py > /home/pi/controller.log 2>&1
 ```
+
