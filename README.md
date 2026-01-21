@@ -16,8 +16,9 @@ My main drivers are:
  - have an easy to build/extend guitar pedal,
  - built with open source hardware and software.
 
-Today, the open source Neural Amp Models are becoming a standard that can easily compete with the industry leaders. There is
-no more a reason to get yourself locked into an proprietary ecosystem.
+Today, the open source Neural Amp Models are becoming a standard that can easily compete with the industry leaders.
+Free to download captures/models are available at [Tone3000](https://www.tone3000.com/) and the numbers are growing every day.
+There is no more a reason to get yourself locked into an proprietary ecosystem.
 
 Guitar pedal / processor that plugs straight into **Mixer MIC input via XLR**. Of course it could be easily extended to provide
 different input/output possibilities.
