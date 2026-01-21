@@ -95,19 +95,9 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 
 ## Output: Mixer MIC Input via Transformer
 
-A mixer mic input is sensitive. Codec line out is strong.
+A mixer mic input is sensitive (Mic level 1.5kΩ -5kΩ). Codec line out is strong (can drive 10kΩ loads easily)
 You need both:
 
-1) **output transformer isolation**  
-2) **-20 dB pad**
-```
-sec                                     XLR to the mix
- HOT o---[1k5]-----o------------------- pin 2
-                   |
-                 [330]
-                   |
-COLD o---[1k5]-----o------------------- pin 3
-
-shield -------------------------------- pin 1
-```
+1) **-20 dB pad** (the resistor values depend on the impedances of output transformer and the mixpult input)
+2) **output transformer isolation** (Lehle MZ or Neutrik NTL1)
 
