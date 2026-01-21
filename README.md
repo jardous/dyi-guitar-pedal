@@ -3,6 +3,9 @@
 DIY guitar pedal based on a **Raspberry Pi Compute Module (CM4 or CM5)** and **Audio Codec Zero**.
 Audio output is designed for **mixer MIC input** via an **output transformer + -20 dB pad**.
 
+![First prototype](images/IMG_3170.jpg)
+![First prototype inside](images/IMG_3188.jpg)
+
 ## Motivation
 
 There are many guitar multi-effect pedals out there. Most of them are using proprietary SW and formats and lock the customer
@@ -72,7 +75,7 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 - momentary footswitch (soft-touch recommended)
 - Optional debounce parts per switch:
   - 10k pull-up (if not using internal pull-up)
-  - 100 nF to GND (RC debounce)
+  - 100nF to GND (RC debounce)
 
 ## Output to Mixer MIC IN (XLR)
 - 1× output transformer (line → mic)
@@ -91,6 +94,10 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 
 ## XLR out
 ## Jack in
+## Diecast aluminium enclosure
+
+The Raspberry Pi needs quite intensive cooling. Attaching it directly to the diecast aluminium enclosure with heatsink pads does the job pretty well.
+
 ---
 
 ## Output: Mixer MIC Input via Transformer
@@ -101,3 +108,16 @@ You need both:
 1) **-20 dB pad** (the resistor values depend on the impedances of output transformer and the mixpult input)
 2) **output transformer isolation** (Lehle MZ or Neutrik NTL1)
 
+# Configuration
+
+# ALSA
+
+```
+$ sudo alsactl restore -f config/codec-zero-left.conf
+```
+
+# Working on different prototypes
+
+![First prototype](images/IMG_3034.jpg)
+![First prototype](images/IMG_3083.jpg)
+![First prototype](images/IMG_3126.jpg)
