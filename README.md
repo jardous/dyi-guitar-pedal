@@ -109,6 +109,16 @@ You need both:
 1) **-20 dB pad** (the resistor values depend on the impedances of output transformer and the mixpult input)
 2) **output transformer isolation** (Lehle MZ or Neutrik NTL1)
 
+```
+NTE1 sec ---[1k5]----- XLR pin2
+                   |
+                 [330]
+                   |
+NTE1 sec ---[1k5]---- XLR pin3
+
+XLR pin1 -> ground/enclosure
+```
+
 # Configuration
 
 # ALSA
