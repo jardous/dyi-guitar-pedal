@@ -23,6 +23,10 @@ There is no more a reason to get yourself locked into an proprietary ecosystem.
 Guitar pedal / processor that plugs straight into **Mixer MIC input via XLR**. Of course it could be easily extended to provide
 different input/output possibilities. And lastly, having to create captures would be a nice feature too.
 
+## Demo
+
+[![Listen](https://img.shields.io/badge/▶%20Listen-demo.mp3-blue)](https://drive.google.com/file/d/1NuAQOIKmJrkCax1FqkEEcGqWqiNP_ioW/view?usp=sharing)
+
 ## Software
 The pedal is running [PiPedal](https://github.com/rerdavies/pipedal). Another option would be [MOD.audio](MOD.audio).
 
