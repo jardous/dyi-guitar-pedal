@@ -27,6 +27,8 @@ different input/output possibilities. And lastly, having to create captures woul
 
 [![Listen](https://img.shields.io/badge/▶%20Listen-demo.mp3-blue)](https://drive.google.com/file/d/1NuAQOIKmJrkCax1FqkEEcGqWqiNP_ioW/view?usp=sharing)
 
+The model used is a 5150 from https://www.tone3000.com/tones/evh-5150-6440
+
 ## Software
 The pedal is running [PiPedal](https://github.com/rerdavies/pipedal). Another option would be [MOD.audio](MOD.audio).
 
