@@ -36,7 +36,7 @@ The pedal is running [PiPedal](https://github.com/rerdavies/pipedal). Another op
 
 ## Hardware Signal Flow
 
-Guitar → ADC → Raspberry Pi → DAC → **PAD (-20 dB)** → **Transformer** → XLR → Mixer MIC IN
+Guitar → Buffer → ADC → Raspberry Pi DSP → DAC → **PAD (-20 dB)** → **Transformer** → XLR → Mixer MIC IN
 
 PiPedal works well with many USB Audio Interfaces. For an embedded application, the Raspberry Pi CM5 and a Raspberry Pi Codec Zero has been selected.
 
@@ -56,6 +56,10 @@ extended by an output volume control to tune the signal going to ADC to prevent 
 - [Audio Codec Zero](https://www.raspberrypi.com/documentation/accessories/audio.html#raspberry-pi-codec-zero) board (I2S audio). Other options are HifiBerry DAC+ ADC Pro (a bit bigger form factor)
 
 ## Input (Guitar) + Buffer
+
+The Signal path consists of many parts. It is important to tune the gain staging between all of them. Especially the Buffer → ADC is the most crucial one. If the gain is too small, the NAM won't saturate enough. If the signal is too high, the ADC will start clipping. The buffer should ideally have variable gain.
+
+Electric guitar can peak very high. The OpAmp gain could stay 1 (no gain). To prevent ADC clipping a volume regulation should be placed right after the OpAmp and the coupling output capacitor.
 
 Recommended
   - TC Electronic Polytune
