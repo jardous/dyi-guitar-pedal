@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Two-button GPIO-to-MIDI controller; importing this module acquires no hardware."""
+"""Three-button GPIO-to-MIDI controller; importing this module acquires no hardware."""
 
 from contextlib import ExitStack
 from dataclasses import dataclass
 from functools import partial
 import logging
+from pathlib import Path
 from queue import Empty, Full, Queue
 import signal
 import threading
@@ -23,7 +24,11 @@ class ButtonMapping:
 
 @dataclass(frozen=True)
 class Settings:
-    buttons: tuple = (ButtonMapping(27, 10, 20), ButtonMapping(26, 30, 40))
+    buttons: tuple = (
+        ButtonMapping(27, 10, 20),
+        ButtonMapping(26, 30, 40),
+        ButtonMapping(17, 50, 60),
+    )
     target_port: str = "PiPedal:in"
     hold_threshold: float = 1.0
     bounce_time: float = 0.05
@@ -324,6 +329,53 @@ def run_controller(midi, button_factory, settings=Settings()):
         raise RuntimeError("MIDI worker failed") from worker.error
 
 
+def discover_header_chip(lgpio, paths):
+    """Find the header controller by label, never by boot-dependent chip number."""
+    labels = {"pinctrl-rp1", "pinctrl-bcm2711", "pinctrl-bcm2835"}
+    matches = []
+    for path in paths:
+        chip = int(path.name.removeprefix("gpiochip"))
+        try:
+            handle = lgpio.gpiochip_open(chip)
+        except Exception:
+            LOG.debug("Cannot inspect %s", path, exc_info=True)
+            continue
+        try:
+            if lgpio.gpio_get_chip_info(handle)[3] in labels:
+                matches.append(chip)
+        finally:
+            lgpio.gpiochip_close(handle)
+    if len(matches) != 1:
+        raise RuntimeError(
+            "Expected one accessible Raspberry Pi header GPIO chip, found "
+            + repr(matches) + "; check /dev/gpiochip* permissions and board support"
+        )
+    return matches[0]
+
+
+def make_pin_factory():
+    import lgpio
+    from gpiozero.pins.lgpio import LGPIOFactory, LGPIOPin
+    from gpiozero.pins.pi import PiFactory
+
+    chip = discover_header_chip(lgpio, sorted(Path("/dev").glob("gpiochip*")))
+
+    class HeaderFactory(LGPIOFactory):
+        def __init__(self):
+            # gpiozero 2.0.1 may ignore LGPIOFactory(chip=...) and force 0/4.
+            # Initialize its existing lgpio backend with the discovered chip;
+            # GPIO numbering, debounce, callbacks, and cleanup stay inherited.
+            PiFactory.__init__(self)
+            self._handle = None
+            self._chip = chip
+            self.pin_class = LGPIOPin
+            self._handle = lgpio.gpiochip_open(chip)
+
+    factory = HeaderFactory()
+    LOG.info("Using header GPIO controller /dev/gpiochip%s", chip)
+    return factory
+
+
 def main():
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(threadName)s %(message)s"
@@ -333,7 +385,11 @@ def main():
         import mido
         from gpiozero import Button
 
-        run_controller(mido, Button)
+        factory = make_pin_factory()
+        try:
+            run_controller(mido, partial(Button, pin_factory=factory))
+        finally:
+            factory.close()
     except Exception:
         LOG.exception("Controller failed")
         return 1

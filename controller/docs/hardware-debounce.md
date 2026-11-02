@@ -4,8 +4,8 @@ The original pedal uses **one series resistor and one capacitor per button**.
 The capacitor is marked **104**, meaning **100 nF (0.1 uF)**, not 1 uF. A normally
 open momentary switch and its series resistor form a branch in parallel with the
 capacitor. Both series resistors are **1 kOhm**, confirmed by the pedal's owner.
-An optional third channel can use the same circuit on GPIO17 / physical pin 11,
-after confirming that pin is unused. It is not enabled in the current script.
+The third channel uses the same circuit on GPIO17 / physical pin 11. All three
+inputs are enabled in the current script; verify none conflicts with accessories.
 
 ## Wiring: physical 40-pin header numbers
 
@@ -18,7 +18,7 @@ after confirming that pin is unused. It is not enabled in the current script.
                       |                               |
                       +---------SW2----R2 1k----------+
 
-  Optional third channel (not enabled in the script):
+  Third channel:
 
   Pin 11 (GPIO17) ----o----------|| C3 100 nF---------o----- Common GND
                       |                               |      (pin 9 or 39)
@@ -34,7 +34,7 @@ discrete part in the drawn filter.
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | **13** | 27 | **9 or 39** | C1: 104 / 100 nF | R1: 1 kOhm | Original; enabled |
 | 2 | **37** | 26 | **9 or 39** | C2: 104 / 100 nF | R2: 1 kOhm | Original; enabled |
-| 3 | **11** | 17 | **9 or 39** | C3: 104 / 100 nF | R3: 1 kOhm (820 Ohm also suitable) | Optional; not enabled |
+| 3 | **11** | 17 | **9 or 39** | C3: 104 / 100 nF | R3: 1 kOhm (820 Ohm also suitable) | Enabled |
 
 Pins 9 and 39 are already connected to board ground. **One common ground wire can
 serve all three filters**; there is no need to use a different ground pin per
@@ -44,15 +44,11 @@ the standard 40-pin header; verify its orientation and carrier routing before wi
 
 ## Matching the current script
 
-Both inputs match `controller.py`: button 1 uses **BCM GPIO27 / physical pin 13**,
-and button 2 uses **BCM GPIO26 / physical pin 37**. Physical pins **9 and 39** are
-ground. The script enables each input's internal pull-up with `pull_up=True`.
-No pin-mapping changes are required.
-
-The optional third input uses **BCM GPIO17 / physical pin 11**. Enabling it requires
-adding `ButtonMapping(17, 50, 60)` to `Settings.buttons`; notes 50/60 are the proposed
-short/long messages. Until then, the script does not configure GPIO17's pull-up or
-listen for its switch. Verify GPIO17 is free before enabling it.
+All three inputs match `controller.py`: button 1 uses **BCM GPIO27 / physical pin
+13**, button 2 uses **BCM GPIO26 / physical pin 37**, and button 3 uses **BCM GPIO17 /
+physical pin 11**. Physical pins **9 and 39** are ground. The script enables each
+input's internal pull-up with `pull_up=True`; no extra discrete pull-up is required.
+The short/long MIDI notes are 10/20, 30/40, and 50/60 respectively.
 
 ## Parts per button
 
@@ -62,8 +58,8 @@ listen for its switch. Verify GPIO17 is free before enabling it.
 | 1 | 1 kOhm resistor (820 Ohm also suitable) | Limits capacitor discharge current through the switch |
 | 1 | 104 / 100 nF capacitor | Connected from its input to ground |
 
-Use two sets for the original buttons, or three sets when adding the optional
-third. The original two resistors are 1 kOhm. An 820 Ohm alternative limits the
+Use three sets for the three-button controller. The original two resistors are
+1 kOhm. An 820 Ohm alternative limits the
 initial discharge current to about 4 mA rather than 3.3 mA and needs no software
 timing changes; keep software debounce enabled.
 
@@ -102,7 +98,7 @@ one-second threshold.
 - Power off before wiring. Use **3.3 V logic only**, with a common CM5/carrier
   ground. Do not connect GPIOs or pull-ups to 5 V or the analog supply rails.
 - Verify the header orientation: GPIO27 is physical pin 13, GPIO26 is pin 37, and
-  optional GPIO17 is pin 11. Use pin 9 or 39 as common ground.
+  GPIO17 is pin 11. Use pin 9 or 39 as common ground.
 - Place the capacitor near the GPIO interface. Keep switch wiring away from audio
   inputs, switching regulators, and I2S lines; use a signal/ground twisted pair
   per switch. This filter is not ESD protection for external cables.

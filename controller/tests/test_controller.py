@@ -376,7 +376,7 @@ def factory(*args, **kwargs):
 midi = FakeMidi()
 midi.on_open = lambda port: os.kill(os.getpid(), int(sys.argv[1]))
 controller.run_controller(midi, factory)
-assert len(buttons) == 2
+assert len(buttons) == 3
 for button in buttons:
     button.close.assert_called_once()
     assert button.when_pressed is None
@@ -486,6 +486,64 @@ print('clean shutdown')
         for setting in (dict(queue_size=0), dict(channel=16), dict(poll_interval=0)):
             with self.subTest(setting=setting), self.assertRaises(ValueError):
                 controller.Settings(**setting)
+
+    def test_three_default_button_mappings(self):
+        self.assertEqual(
+            [(b.gpio, b.short_note, b.long_note) for b in controller.Settings().buttons],
+            [(27, 10, 20), (26, 30, 40), (17, 50, 60)],
+        )
+
+    def test_third_button_short_and_long_messages(self):
+        clock = Clock()
+        mapping = controller.Settings().buttons[2]
+        state = controller.PressState(mapping, 1, clock)
+        state.press()
+        clock.now += 0.2
+        self.assertEqual(state.release(), 50)
+        state.press()
+        clock.now += 1.0
+        self.assertEqual(state.release(), 60)
+
+
+class HeaderDiscoveryTests(unittest.TestCase):
+    def test_rp1_chip_number_is_discovered(self):
+        lgpio = Mock()
+        lgpio.gpiochip_open.side_effect = lambda chip: chip
+        lgpio.gpio_get_chip_info.side_effect = lambda chip: [
+            0, 54, f"gpiochip{chip}", "pinctrl-rp1" if chip == 15 else "gpio-brcmstb"
+        ]
+        chip = controller.discover_header_chip(
+            lgpio, [Path('/dev/gpiochip11'), Path('/dev/gpiochip15')]
+        )
+        self.assertEqual(chip, 15)
+        self.assertEqual(lgpio.gpiochip_close.call_count, 2)
+
+    def test_older_pi_header_label_is_supported(self):
+        lgpio = Mock()
+        lgpio.gpio_get_chip_info.return_value = [0, 54, "gpiochip0", "pinctrl-bcm2711"]
+        self.assertEqual(controller.discover_header_chip(lgpio, [Path('/dev/gpiochip0')]), 0)
+
+    def test_inaccessible_unrelated_chip_is_skipped(self):
+        lgpio = Mock()
+        lgpio.gpiochip_open.side_effect = [OSError("denied"), 15]
+        lgpio.gpio_get_chip_info.return_value = [0, 54, "gpiochip15", "pinctrl-rp1"]
+        self.assertEqual(controller.discover_header_chip(
+            lgpio, [Path('/dev/gpiochip11'), Path('/dev/gpiochip15')]
+        ), 15)
+
+    def test_missing_or_ambiguous_header_chip_is_rejected(self):
+        lgpio = Mock()
+        lgpio.gpio_get_chip_info.return_value = [0, 54, "gpiochip15", "pinctrl-rp1"]
+        for paths in ([], [Path('/dev/gpiochip14'), Path('/dev/gpiochip15')]):
+            with self.subTest(paths=paths), self.assertRaisesRegex(RuntimeError, "Expected one"):
+                controller.discover_header_chip(lgpio, paths)
+
+    def test_info_failure_still_closes_handle(self):
+        lgpio = Mock()
+        lgpio.gpio_get_chip_info.side_effect = RuntimeError("chip info")
+        with self.assertRaisesRegex(RuntimeError, "chip info"):
+            controller.discover_header_chip(lgpio, [Path('/dev/gpiochip15')])
+        lgpio.gpiochip_close.assert_called_once()
 
 
 if __name__ == "__main__":

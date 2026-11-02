@@ -1,13 +1,12 @@
 # PiPedal button controller
 
-A GPIO-to-MIDI controller for a Raspberry Pi Compute Module 5 running
-[PiPedal](https://github.com/rerdavies/pipedal), with two enabled buttons and an
-optional third-button wiring plan.
+A three-button GPIO-to-MIDI controller for Raspberry Pi, including Pi 5 and
+Compute Module 5 systems running [PiPedal](https://github.com/rerdavies/pipedal).
 
 `controller.py` replaces the former `controller-daemon.py` / `controller-gemini.py`
 with guarded monotonic press timing, a dedicated MIDI worker, connection recovery,
-and explicit shutdown handling. GPIOs, MIDI notes, and release-triggered short/long
-actions are unchanged.
+and explicit shutdown handling. The original two buttons retain their GPIOs and
+MIDI notes; the third adds GPIO17 with notes 50/60. All actions fire on release.
 
 ## Hardware and button mappings
 
@@ -20,11 +19,10 @@ apply 5 V to a GPIO input.
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | 27 | **13** | **9 or 39** | Note 10 | Note 20 | Enabled |
 | 2 | 26 | **37** | **9 or 39** | Note 30 | Note 40 | Enabled |
-| 3 | 17 | **11** | **9 or 39** | Note 50 (proposed) | Note 60 (proposed) | Optional; not enabled |
+| 3 | 17 | **11** | **9 or 39** | Note 50 | Note 60 | Enabled |
 
-The third input is a proposal: first verify that GPIO17 is unused by your carrier
-and accessories. To enable it, add `ButtonMapping(17, 50, 60)` to `Settings.buttons`.
-This documentation update does not change the script's two-button configuration.
+All three mappings are enabled in `Settings.buttons`. Verify these pins are unused
+by your carrier and accessories before installation.
 Each button only sends MIDI notes; downstream action assignments are outside the
 controller's scope.
 
@@ -35,7 +33,7 @@ and **37 to 39**, with a switch and series resistor in parallel with each capaci
 The series resistors are **1 kOhm**, confirmed by the pedal's owner. Both inputs
 match the script: GPIO27 / pin 13 and GPIO26 / pin 37. Pins 9 and 39 are ground.
 Either ground pin can serve all buttons; keep the GPIO signal nodes separate.
-The optional third filter connects between pin **11** and the same common ground.
+The third filter connects between pin **11** and the same common ground.
 Use the same 100 nF capacitor and a 1 kOhm series switch resistor; **820 Ohm** is
 also an acceptable alternative with the internal pull-up. Keep software debounce enabled.
 
@@ -49,9 +47,9 @@ also an acceptable alternative with the internal pull-up. Keep software debounce
 
 ## Dependencies
 
-The controller requires Python 3, `gpiozero`, `mido`, `python-rtmidi`, and a working
-GPIO backend. The reviewed CM5 installation uses `lgpio` and Mido's RtMidi backend
-with ALSA MIDI ports.
+The controller requires Python 3.9+, `gpiozero`, `mido`, `python-rtmidi`, and `lgpio`.
+It explicitly uses the lgpio backend and Mido's default RtMidi backend with ALSA
+MIDI ports on the pedal.
 
 On a compatible Debian/Raspberry Pi OS installation, install the distribution
 packages:
@@ -63,6 +61,12 @@ sudo apt install python3-gpiozero python3-mido python3-rtmidi python3-lgpio
 
 The user running the controller must have access to the GPIO devices and ALSA MIDI
 devices. Avoid running as root merely to work around missing device permissions.
+
+The header GPIO chip is discovered by its kernel label (`pinctrl-rp1` on Pi 5/CM5,
+or the supported BCM header labels on older boards), not a fixed `/dev/gpiochipN`.
+The controller initializes gpiozero's lgpio backend with that chip explicitly,
+including on gpiozero 2.0.1 installations that ignore the `chip=` constructor
+argument. This avoids selecting the wrong controller when chip numbers change.
 
 ## Running
 
@@ -125,10 +129,10 @@ configuration files. Importing the module does not acquire GPIOs or open MIDI.
 
 ## Deployment with systemd (recommended)
 
-Earlier instructions used `/home/pi/controller-daemon.py`. The reviewed CM5 starts
-`/home/pi/controller-gemini.py` through a user cron `@reboot` job and redirects output
-to `/home/pi/controller.log`. Updating this repository **does not rename or restart
-that live copy**.
+Earlier instructions used `/home/pi/controller-daemon.py`. An older CM5 deployment
+used `/home/pi/controller-gemini.py` through a user cron `@reboot` job, redirecting
+output to `/home/pi/controller.log`. When upgrading an existing pedal, check for
+those older paths and startup entries. A new pedal may have none.
 
 The included [pipedal-controller.service](pipedal-controller.service) supervises the
 process, restarts failures, and sends logs to the journal. It runs as `pi` and expects
@@ -164,7 +168,7 @@ During a maintenance window, from this directory on the device:
 6. Verify both button mappings, a PiPedal restart/reconnect, and boot startup during
    a planned reboot. Keep the old script until the replacement has been verified.
 
-SIGINT and SIGTERM request shutdown, disable callbacks, close both GPIO devices,
+SIGINT and SIGTERM request shutdown, disable callbacks, close all three GPIO devices,
 interrupt any note-duration wait, attempt a final note-off, and close MIDI. A worker
 or callback failure causes a nonzero exit so systemd can restart it. Shutdown waits
 up to five seconds for the worker; backend I/O that hangs beyond that is reported
@@ -196,5 +200,5 @@ backend failures, note-off cleanup, callback/worker failures, and resource shutd
   acceptable latency on the CM5. The worker does not replay failed actions.
 - The main loop detects failures in its callbacks and worker, not every possible
   fault inside GPIO/backend library threads. There is no hardware input watchdog.
-- The running device is unchanged until you deliberately deploy this version and
-  migrate its startup configuration.
+- Updating this repository alone does not update a device; installation and any
+  startup migration must be performed separately.

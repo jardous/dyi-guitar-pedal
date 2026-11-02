@@ -91,11 +91,10 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 - Original hardware debounce: one 104 / 100 nF capacitor across physical header
   pins 13/9 and another across 37/39. Each has a parallel switch-plus-series-resistor
   branch with a confirmed 1k resistor. Keep software debounce.
-- Optional third switch: GPIO17 / physical pin 11, using the same filter and common
-  ground on pin 9 or 39. Verify GPIO17 is free; the script does not yet enable it.
+- Third switch: GPIO17 / physical pin 11, using the same filter and common ground
+  on pin 9 or 39. All three switches are enabled; verify the GPIOs are free.
 - See the [hardware debounce schematic](controller/docs/hardware-debounce.md) for
-  wiring, the parts list, and timing limits. Both inputs match the current script's
-  GPIO27/GPIO26 mapping.
+  wiring, the parts list, and timing limits. The controller uses GPIO27/GPIO26/GPIO17.
 
 ## Output to Mixer MIC IN (XLR)
 - 1× output transformer (line → mic)
