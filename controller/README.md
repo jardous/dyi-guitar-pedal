@@ -24,8 +24,9 @@ For the circuit schematic using **one resistor and one capacitor per button**,
 component values, and wiring notes, see [hardware debounce](docs/hardware-debounce.md).
 The original pedal uses **104 / 100 nF capacitors** from physical pins **5 to 9**
 and **37 to 39**, with a switch and series resistor in parallel with each capacitor.
-Resistor values remain to be confirmed. **The first input is GPIO3 / pin 5, which
-does not match this script's GPIO27 / pin 13**; the second input matches GPIO26.
+The series resistors appear to be **1 kOhm**, pending measurement. **The first
+input is GPIO3 / pin 5, which does not match this script's GPIO27 / pin 13**; the
+second input matches GPIO26.
 See the wiring notes before changing code or hardware. Keep software debounce enabled.
 
 - Actions fire on **release**, including long-press actions.

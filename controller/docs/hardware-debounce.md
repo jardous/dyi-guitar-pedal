@@ -3,18 +3,19 @@
 The original pedal uses **one series resistor and one capacitor per button**.
 The capacitor is marked **104**, meaning **100 nF (0.1 uF)**, not 1 uF. A normally
 open momentary switch and its series resistor form a branch in parallel with the
-capacitor. The resistor values have not yet been confirmed.
+capacitor. Both series resistors appear to be **1 kOhm**; this is a visual estimate,
+not a confirmed measurement.
 
 ## Original pedal wiring: physical 40-pin header numbers
 
 ```text
   Pin 5 (GPIO3)  -----o----------|| C1 100 nF---------o----- Pin 9 (GND)
                       |                               |
-                      +---------SW1-------R1----------+
+                      +---------SW1----R1 ~1k---------+
 
   Pin 37 (GPIO26) ----o----------|| C2 100 nF---------o----- Pin 39 (GND)
                       |                               |
-                      +---------SW2-------R2----------+
+                      +---------SW2----R2 ~1k---------+
 ```
 
 `SW1` and `SW2` are normally open and close when pressed. R1/R2 are **in series
@@ -24,8 +25,8 @@ discrete part in the drawn filter.
 
 | Channel | GPIO header pin | BCM GPIO | Ground header pin | Capacitor | Series resistor |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 5 | 3 | 9 | C1: 104 / 100 nF | R1: value to confirm |
-| 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: value to confirm |
+| 1 | 5 | 3 | 9 | C1: 104 / 100 nF | R1: likely 1 kOhm; verify |
+| 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: likely 1 kOhm; verify |
 
 Both ground pins connect to board ground. **Do not join the GPIO3 and GPIO26
 signal nodes.** These physical pin numbers refer to the standard 40-pin header;
@@ -47,7 +48,7 @@ the carrier/Codec Zero wiring and configuration before using it as a button.
 | Quantity | Part | Purpose |
 | --- | --- | --- |
 | 2 | Normally open momentary footswitch | Pulls its input toward ground through the series resistor |
-| 2 | Resistor, value to confirm | Limits capacitor discharge current through the switch |
+| 2 | Resistor, likely 1 kOhm; verify | Limits capacitor discharge current through the switch |
 | 2 | 104 / 100 nF capacitor | Connected from its input to ground |
 
 The marking `104` specifies capacitance only; it does not identify dielectric or
@@ -59,7 +60,8 @@ for this 3.3 V circuit. No buffer IC or 1 uF capacitor is specified here.
 - **Released:** The input's pull-up charges the capacitor toward 3.3 V.
 - **Pressed:** The switch discharges the capacitor through its series resistor.
   This limits the initial capacitor discharge current to approximately `3.3 V / R`
-  for a fully charged capacitor, neglecting other small resistances.
+  for a fully charged capacitor, neglecting other small resistances: approximately
+  **3.3 mA** if R is 1 kOhm.
 - The pull-up and series resistor form a voltage divider while pressed. The
   steady voltage is approximately `3.3 V * R / (Rpullup + R)` and must be below the
   GPIO's specified LOW threshold. A series resistor that is too large can prevent
@@ -69,8 +71,16 @@ for this 3.3 V circuit. No buffer IC or 1 uF capacitor is specified here.
   when calculating the effective `Rpullup`.
 - For illustration only, a 10 kOhm effective pull-up and 100 nF capacitor give a
   **1 ms release time constant**. That pull-up value has not been established for
-  this pedal; the actual timing cannot be specified until the resistors and
-  pull-up configuration are known.
+  this pedal; the actual timing cannot be specified until the series resistor
+  values and pull-up configuration are confirmed. With a 1 kOhm series resistor,
+  the press time constant is at most approximately **0.1 ms** for nominal 100 nF.
+
+**Check GPIO3's I2C pull-up in particular:** if the carrier has a 1.8 kOhm pull-up
+to 3.3 V, a 1 kOhm series switch resistor gives a pressed voltage of approximately
+**1.18 V** (`3.3 * 1 / (1.8 + 1)`). That must not be assumed to be a valid LOW.
+The carrier's actual pull-up value is not established here; verify it and the
+GPIO input specification before using this wiring. A weak internal pull-up alone
+produces a much lower pressed voltage with the same series resistor.
 
 Keep `bounce_time=0.05` enabled. This RC network reduces bounce but does not
 guarantee a single clean edge for every switch, and it adds no separate hysteresis
@@ -89,7 +99,8 @@ one-second threshold.
   per switch. This filter is not ESD protection for external cables.
 - Confirm the resistor values and pull-up configuration. Check HIGH when released
   and a valid LOW when pressed, then inspect bounce with an oscilloscope or logic
-  analyzer if available.
+  analyzer if available. If measuring resistance, power off first; parallel paths
+  can affect an in-circuit reading, so isolate one resistor lead if necessary.
 - Test repeated presses, releases, overlapping presses, and long holds. Confirm
   each physical action produces the intended single MIDI action.
 - Hardware filtering does not fix the unmatched-release startup bug described in
