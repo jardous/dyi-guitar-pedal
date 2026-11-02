@@ -4,8 +4,10 @@ The original pedal uses **one series resistor and one capacitor per button**.
 The capacitor is marked **104**, meaning **100 nF (0.1 uF)**, not 1 uF. A normally
 open momentary switch and its series resistor form a branch in parallel with the
 capacitor. Both series resistors are **1 kOhm**, confirmed by the pedal's owner.
+An optional third channel can use the same circuit on GPIO17 / physical pin 11,
+after confirming that pin is unused. It is not enabled in the current script.
 
-## Original pedal wiring: physical 40-pin header numbers
+## Wiring: physical 40-pin header numbers
 
 ```text
   Pin 13 (GPIO27) ----o----------|| C1 100 nF---------o----- Pin 9 (GND)
@@ -15,21 +17,30 @@ capacitor. Both series resistors are **1 kOhm**, confirmed by the pedal's owner.
   Pin 37 (GPIO26) ----o----------|| C2 100 nF---------o----- Pin 39 (GND)
                       |                               |
                       +---------SW2----R2 1k----------+
+
+  Optional third channel (not enabled in the script):
+
+  Pin 11 (GPIO17) ----o----------|| C3 100 nF---------o----- Common GND
+                      |                               |      (pin 9 or 39)
+                      +---------SW3----R3 1k----------+
 ```
 
-`SW1` and `SW2` are normally open and close when pressed. R1/R2 are **in series
+All switches are normally open and close when pressed. R1/R2/R3 are **in series
 with the switches**, not pull-ups. Each GPIO also requires a pull-up supplied by
 the GPIO configuration or existing board circuitry; it is not an additional
 discrete part in the drawn filter.
 
-| Channel | GPIO header pin | BCM GPIO | Ground header pin | Capacitor | Series resistor |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 13 | 27 | 9 | C1: 104 / 100 nF | R1: 1 kOhm |
-| 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: 1 kOhm |
+| Channel | Physical signal pin | BCM GPIO | Physical ground pin (shared) | Capacitor | Series resistor | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **13** | 27 | **9 or 39** | C1: 104 / 100 nF | R1: 1 kOhm | Original; enabled |
+| 2 | **37** | 26 | **9 or 39** | C2: 104 / 100 nF | R2: 1 kOhm | Original; enabled |
+| 3 | **11** | 17 | **9 or 39** | C3: 104 / 100 nF | R3: 1 kOhm (820 Ohm also suitable) | Optional; not enabled |
 
-Both ground pins connect to board ground. **Do not join the GPIO27 and GPIO26
-signal nodes.** These physical pin numbers refer to the standard 40-pin header;
-verify its orientation and the carrier board's routing before wiring.
+Pins 9 and 39 are already connected to board ground. **One common ground wire can
+serve all three filters**; there is no need to use a different ground pin per
+button. Keep each button's GPIO, resistor, and capacitor separate; **do not join
+the GPIO27, GPIO26, and GPIO17 signal nodes**. These physical pin numbers refer to
+the standard 40-pin header; verify its orientation and carrier routing before wiring.
 
 ## Matching the current script
 
@@ -38,13 +49,23 @@ and button 2 uses **BCM GPIO26 / physical pin 37**. Physical pins **9 and 39** a
 ground. The script enables each input's internal pull-up with `pull_up=True`.
 No pin-mapping changes are required.
 
-## Parts for the two filters
+The optional third input uses **BCM GPIO17 / physical pin 11**. Enabling it requires
+adding `ButtonMapping(17, 50, 60)` to `Settings.buttons`; notes 50/60 are the proposed
+short/long messages. Until then, the script does not configure GPIO17's pull-up or
+listen for its switch. Verify GPIO17 is free before enabling it.
+
+## Parts per button
 
 | Quantity | Part | Purpose |
 | --- | --- | --- |
-| 2 | Normally open momentary footswitch | Pulls its input toward ground through the series resistor |
-| 2 | 1 kOhm resistor | Limits capacitor discharge current through the switch |
-| 2 | 104 / 100 nF capacitor | Connected from its input to ground |
+| 1 | Normally open momentary footswitch | Pulls its input toward ground through the series resistor |
+| 1 | 1 kOhm resistor (820 Ohm also suitable) | Limits capacitor discharge current through the switch |
+| 1 | 104 / 100 nF capacitor | Connected from its input to ground |
+
+Use two sets for the original buttons, or three sets when adding the optional
+third. The original two resistors are 1 kOhm. An 820 Ohm alternative limits the
+initial discharge current to about 4 mA rather than 3.3 mA and needs no software
+timing changes; keep software debounce enabled.
 
 The marking `104` specifies capacitance only; it does not identify dielectric or
 voltage rating. For replacement parts, a ceramic X7R rated >= 10 V is suitable
@@ -80,8 +101,8 @@ one-second threshold.
 
 - Power off before wiring. Use **3.3 V logic only**, with a common CM5/carrier
   ground. Do not connect GPIOs or pull-ups to 5 V or the analog supply rails.
-- Verify the header orientation: GPIO27 is physical pin 13 and GPIO26 is pin 37;
-  use physical pins 9 and 39 for the respective ground connections.
+- Verify the header orientation: GPIO27 is physical pin 13, GPIO26 is pin 37, and
+  optional GPIO17 is pin 11. Use pin 9 or 39 as common ground.
 - Place the capacitor near the GPIO interface. Keep switch wiring away from audio
   inputs, switching regulators, and I2S lines; use a signal/ground twisted pair
   per switch. This filter is not ESD protection for external cables.

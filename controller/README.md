@@ -1,7 +1,8 @@
 # PiPedal button controller
 
-A two-button GPIO-to-MIDI controller for a Raspberry Pi Compute Module 5 running
-[PiPedal](https://github.com/rerdavies/pipedal).
+A GPIO-to-MIDI controller for a Raspberry Pi Compute Module 5 running
+[PiPedal](https://github.com/rerdavies/pipedal), with two enabled buttons and an
+optional third-button wiring plan.
 
 `controller.py` replaces the former `controller-daemon.py` / `controller-gemini.py`
 with guarded monotonic press timing, a dedicated MIDI worker, connection recovery,
@@ -15,10 +16,17 @@ button is configured with an internal pull-up and is active when connected to
 ground. Verify the GPIO routing on your CM5 carrier board before wiring; do not
 apply 5 V to a GPIO input.
 
-| Button | BCM GPIO | Short press (< 1 second) | Long press (>= 1 second) |
-| --- | --- | --- | --- |
-| 1 | 27 | Note 10 | Note 20 |
-| 2 | 26 | Note 30 | Note 40 |
+| Button | BCM GPIO | Physical signal pin | Physical ground pin (shared) | Short press (< 1 second) | Long press (>= 1 second) | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 27 | **13** | **9 or 39** | Note 10 | Note 20 | Enabled |
+| 2 | 26 | **37** | **9 or 39** | Note 30 | Note 40 | Enabled |
+| 3 | 17 | **11** | **9 or 39** | Note 50 (proposed) | Note 60 (proposed) | Optional; not enabled |
+
+The third input is a proposal: first verify that GPIO17 is unused by your carrier
+and accessories. To enable it, add `ButtonMapping(17, 50, 60)` to `Settings.buttons`.
+This documentation update does not change the script's two-button configuration.
+Each button only sends MIDI notes; downstream action assignments are outside the
+controller's scope.
 
 For the circuit schematic using **one resistor and one capacitor per button**,
 component values, and wiring notes, see [hardware debounce](docs/hardware-debounce.md).
@@ -26,7 +34,10 @@ The original pedal uses **104 / 100 nF capacitors** from physical pins **13 to 9
 and **37 to 39**, with a switch and series resistor in parallel with each capacitor.
 The series resistors are **1 kOhm**, confirmed by the pedal's owner. Both inputs
 match the script: GPIO27 / pin 13 and GPIO26 / pin 37. Pins 9 and 39 are ground.
-Keep software debounce enabled.
+Either ground pin can serve all buttons; keep the GPIO signal nodes separate.
+The optional third filter connects between pin **11** and the same common ground.
+Use the same 100 nF capacitor and a 1 kOhm series switch resistor; **820 Ohm** is
+also an acceptable alternative with the internal pull-up. Keep software debounce enabled.
 
 - Actions fire on **release**, including long-press actions.
 - Software debounce is set to 50 ms for each button.
