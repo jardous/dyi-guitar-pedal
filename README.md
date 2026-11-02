@@ -32,6 +32,10 @@ The model used is a 5150 from https://www.tone3000.com/tones/evh-5150-6440
 ## Software
 The pedal is running [PiPedal](https://github.com/rerdavies/pipedal). Another option would be [MOD.audio](MOD.audio).
 
+The [GPIO button controller](controller/README.md) sends MIDI notes to PiPedal for
+short and long footswitch presses. See its documentation for setup, button
+mappings, and the controller review.
+
 ---
 
 ## Hardware Signal Flow
