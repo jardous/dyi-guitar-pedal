@@ -91,6 +91,5 @@ one-second threshold.
   can affect an in-circuit reading, so isolate one resistor lead if necessary.
 - Test repeated presses, releases, overlapping presses, and long holds. Confirm
   each physical action produces the intended single MIDI action.
-- The updated controller ignores unmatched startup releases in software, as
-  described in [the review](review.md); the RC filter is not a replacement for that
-  guard. Leave software debounce enabled.
+- The controller ignores unmatched startup releases in software; the RC filter is
+  not a replacement for that guard. Leave software debounce enabled.

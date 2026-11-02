@@ -6,7 +6,7 @@ A two-button GPIO-to-MIDI controller for a Raspberry Pi Compute Module 5 running
 `controller.py` replaces the former `controller-daemon.py` / `controller-gemini.py`
 with guarded monotonic press timing, a dedicated MIDI worker, connection recovery,
 and explicit shutdown handling. GPIOs, MIDI notes, and release-triggered short/long
-actions are unchanged. See [the review and fix status](docs/review.md).
+actions are unchanged.
 
 ## Hardware and button mappings
 
