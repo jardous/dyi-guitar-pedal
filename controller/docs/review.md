@@ -3,14 +3,39 @@
 ## Scope
 
 This review covers the original `controller-gemini.py` fetched from `pipedal-cm5`,
-which is identical to this repository's former `controller-daemon.py`. It is now
-named `controller.py` without functional changes. Inspection of the device was
-read-only: no controller restart, GPIO acquisition, MIDI transmission, or PiPedal
-configuration changes were performed.
+which was identical to this repository's former `controller-daemon.py`. The
+findings below describe that historical baseline. `controller.py` now implements
+the fixes summarized here; it is no longer a byte-for-byte copy of the original.
+Inspection of the device was read-only: no controller restart, GPIO acquisition,
+MIDI transmission, or PiPedal configuration changes were performed.
 
 The environment inspected had Python 3.13.5, gpiozero 2.0.1, python-rtmidi 1.5.8,
 and lgpio 0.2.2.0. Mido selected its RtMidi backend. The running controller was
 launched by cron's `@reboot` facility rather than a dedicated systemd unit.
+
+## Implemented fixes
+
+| Finding | Implementation |
+| --- | --- |
+| Unmatched/startup releases | `PressState` starts unarmed, ignores unmatched releases, consumes timestamps, and ignores duplicate presses |
+| Adjustable wall-clock timing | Hold durations use `time.monotonic()` |
+| Blocking GPIO callbacks | Callbacks only update button state and submit to a bounded queue; one worker owns MIDI |
+| Stale connections and startup discovery | Periodic discovery, exponential retry backoff, and a fresh subscription before each action |
+| Ambiguous matching ports | Refuse to choose an arbitrary destination |
+| Outage/overflow/stale action replay | Drop disconnected actions and queue overflow, expire queued actions, and invalidate pending actions on disconnect |
+| Callback/worker failures | Propagate to the main process and exit nonzero for supervision |
+| Shutdown and diagnostics | Main entry point, timestamped logging, signal handlers, explicit GPIO/MIDI cleanup, best-effort final note-off |
+| Cron supervision | Included systemd service and migration instructions; deployment remains manual |
+| Scattered configuration | Immutable `Settings` and `ButtonMapping` dataclasses |
+
+GPIO27/GPIO26, note mappings, the one-second threshold, and release-triggered long
+actions are intentionally preserved. No change to threshold-triggered behavior
+was requested. The original running device has not been modified.
+
+Hardware-free regression tests are in `controller/tests/test_controller.py`; run
+`python3 -m unittest discover -s tests -v` from `controller/`. They exercise the new
+implementation rather than just extracted baseline functions. Real hardware/ALSA
+validation remains outstanding; see the current [README](../README.md) for limits.
 
 ## What already works well
 
@@ -20,7 +45,7 @@ launched by cron's `@reboot` facility rather than a dedicated systemd unit.
 - Note-on messages are paired with note-off messages during normal operation.
 - A missing MIDI destination does not immediately terminate the process.
 
-## Findings
+## Original findings (historical)
 
 ### P1: Unmatched releases can generate false long-press actions
 
@@ -126,7 +151,7 @@ Keep GPIOs, note mappings, MIDI channel, thresholds, and debounce settings toget
 in a small configuration structure. Avoid adding unnecessary complexity for a
 two-button controller.
 
-## Validation performed
+## Original review validation
 
 - Parsed the full source as Python without executing hardware setup.
 - Exercised extracted timer functions locally with a fake clock and MIDI action
@@ -152,7 +177,7 @@ electrical bounce, and simultaneous-button timing remain to be tested safely.
 8. Queue overflow, stale-action expiry, and no delayed burst after reconnection.
 9. SIGTERM/Ctrl+C cleanup, worker failure propagation, and service restart.
 
-## Recommended implementation order
+## Original recommended implementation order
 
 1. Guard unmatched releases and switch duration measurement to a monotonic clock.
 2. Separate GPIO callbacks from MIDI delivery and make reconnection reliable.

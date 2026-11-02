@@ -3,10 +3,10 @@
 A two-button GPIO-to-MIDI controller for a Raspberry Pi Compute Module 5 running
 [PiPedal](https://github.com/rerdavies/pipedal).
 
-`controller.py` is the former `controller-daemon.py`, renamed without behavior
-changes. It also matches the `controller-gemini.py` reviewed on the running CM5.
-The findings in [the code review](docs/review.md) are proposed improvements,
-**not implemented fixes**.
+`controller.py` replaces the former `controller-daemon.py` / `controller-gemini.py`
+with guarded monotonic press timing, a dedicated MIDI worker, connection recovery,
+and explicit shutdown handling. GPIOs, MIDI notes, and release-triggered short/long
+actions are unchanged. See [the review and fix status](docs/review.md).
 
 ## Hardware and button mappings
 
@@ -70,57 +70,120 @@ or sending messages:
 python3 -c 'import mido; print("\n".join(mido.get_output_names()))'
 ```
 
-The script selects the first destination whose name contains `PiPedal:in`, such
-as `PiPedal:PiPedal:in 128:0`. The numeric ALSA address can change; it is deliberately
-not hardcoded. If multiple ports match, the first enumerated match is used.
+The script finds destinations whose name contains `PiPedal:in`, such as
+`PiPedal:PiPedal:in 128:0`. The numeric ALSA address can change; it is deliberately
+not hardcoded. If multiple destinations match, it refuses to choose arbitrarily:
+adjust `Settings.target_port` to identify exactly one destination.
 
-The initial "System Ready" message does not prove MIDI is connected. Look for
-`SUCCESS: Connected to destination ...`. If no destination is available, an action
-is skipped and connection discovery is retried on the next action.
+Logs have timestamps, severity, and thread names. `GPIO controller running` means
+the buttons are initialized; **`MIDI connected to ...`** confirms the port opened.
+Connection-state messages are logged only when the state changes.
+
+The MIDI worker checks the destination every second while connected. Missing ports
+and backend failures trigger retries with exponential backoff from 0.5 to 10 seconds,
+without requiring a button press. Before each action it refreshes the subscription
+so a silent stale ALSA connection is not reused, including when a restart reuses
+the same port name/address. GPIO callbacks never discover ports, send MIDI, or sleep.
+
+The action queue holds at most eight entries and drops the newest if full. Actions
+expire after 250 ms (checked again after opening the port), and disconnects discard
+pending actions. Presses released while disconnected are dropped, not saved for a
+later burst. A warning summarizes dropped actions during periodic checks.
+
+A button held at startup must be released and pressed again before it can produce
+an action. Unmatched releases and duplicate press callbacks do not generate extra
+notes. Both short and long actions still fire **on release**, not at the threshold.
 
 ## Configuration
 
-Configuration is currently edited in `controller.py`:
+Configuration is centralized in the `Settings` dataclass in `controller.py`:
 
 | Setting | Location |
 | --- | --- |
-| MIDI destination substring | `TARGET_PORT_NAME` |
-| Long-press threshold, seconds | `HOLD_THRESHOLD` |
-| GPIO pins, pull-ups, debounce | `Button(...)` constructors |
-| Short/long MIDI notes | `when_released` callbacks |
-| Note duration | `time.sleep(0.05)` in `trigger_midi()` |
+| MIDI destination substring | `target_port` |
+| GPIO pins and short/long notes | `buttons` / `ButtonMapping` |
+| Long-press threshold, seconds | `hold_threshold` |
+| Software debounce, seconds | `bounce_time` |
+| MIDI channel, zero-based | `channel` |
+| Note duration, seconds | `note_duration` |
+| Queue capacity and expiry, seconds | `queue_size`, `max_action_age` |
+| Connected polling and retry backoff, seconds | `poll_interval`, `retry_initial`, `retry_max` |
 
-There are no command-line options or external configuration files.
+Inputs use internal pull-ups. There are no command-line options or external
+configuration files. Importing the module does not acquire GPIOs or open MIDI.
 
-## Existing device deployment and rename
+## Deployment with systemd (recommended)
 
 Earlier instructions used `/home/pi/controller-daemon.py`. The reviewed CM5 starts
 `/home/pi/controller-gemini.py` through a user cron `@reboot` job and redirects output
 to `/home/pi/controller.log`. Updating this repository **does not rename or restart
 that live copy**.
 
-To deploy the renamed script later, during a maintenance window:
+The included [pipedal-controller.service](pipedal-controller.service) supervises the
+process, restarts failures, and sends logs to the journal. It runs as `pi` and expects
+`/home/pi/controller.py`. Edit `User`, `WorkingDirectory`, and `ExecStart` if needed;
+the service account needs GPIO and ALSA MIDI access. Ordering after PiPedal helps at
+boot, but the controller can start before its MIDI port exists.
+
+During a maintenance window, from this directory on the device:
 
 1. Back up the existing script and user crontab.
-2. Stop the running controller before testing or starting a replacement. Avoid
-   leaving two controller processes competing for the same GPIOs.
-3. Install this directory's script as `/home/pi/controller.py`.
-4. Edit only the existing controller entry with `crontab -e` to use the new name:
+2. Remove **only the old controller's `@reboot` entry** using `crontab -e`. Do not
+   leave cron and systemd both configured to start it.
+3. Identify and stop the existing controller process before testing or starting a
+   replacement. Removing the cron entry does not stop an already running copy.
+4. Install the updated script, then test both buttons in the foreground:
 
-   ```cron
-   @reboot /usr/bin/python3 -u /home/pi/controller.py > /home/pi/controller.log 2>&1
+   ```sh
+   install -m 755 controller.py /home/pi/controller.py
+   /usr/bin/python3 -u /home/pi/controller.py
    ```
 
-5. Start one copy using the new path, verify the connection and both button
-   mappings, and confirm boot startup during a planned reboot.
+   Stop the foreground test with Ctrl+C before starting the service.
+5. Install and enable the service:
 
-Keep the old script until the replacement has been verified. A dedicated systemd
-service is recommended instead of cron for future restart supervision; no service
-unit or automatic deployment is included in this baseline.
+   ```sh
+   sudo install -m 644 pipedal-controller.service /etc/systemd/system/pipedal-controller.service
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now pipedal-controller.service
+   sudo systemctl status pipedal-controller.service
+   sudo journalctl -u pipedal-controller.service -f
+   ```
+
+6. Verify both button mappings, a PiPedal restart/reconnect, and boot startup during
+   a planned reboot. Keep the old script until the replacement has been verified.
+
+SIGINT and SIGTERM request shutdown, disable callbacks, close both GPIO devices,
+interrupt any note-duration wait, attempt a final note-off, and close MIDI. A worker
+or callback failure causes a nonzero exit so systemd can restart it. Shutdown waits
+up to five seconds for the worker; backend I/O that hangs beyond that is reported
+as a failure rather than hanging the process indefinitely.
+
+To roll back, stop and disable the new service, restore the old script, and restore
+only its previous cron entry. Never run two controllers against the same GPIOs.
+
+## Tests
+
+Run from this directory:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+The tests use only the Python standard library and fake MIDI/GPIO objects; they
+do not require `mido`, `gpiozero`, a Pi, or connected hardware. They cover timing,
+startup releases, overlapping presses, bounded/expiring queues, reconnect/backoff,
+backend failures, note-off cleanup, callback/worker failures, and resource shutdown.
 
 ## Known limitations
 
-The baseline has a confirmed unmatched-release timing bug, uses an adjustable
-wall clock for hold durations, blocks GPIO callbacks while sending MIDI, and has
-limited reconnection and process supervision. See [docs/review.md](docs/review.md)
-for evidence, priorities, and suggested tests.
+- Hardware bounce, GPIO timing under load, and real ALSA/PiPedal restarts still need
+  validation on the assembled pedal. The software is not hard real-time.
+- MIDI has no delivery acknowledgement here. A restart between discovery/open/send
+  can still lose an action or its note-off; cleanup is best-effort, not a guarantee.
+- Per-action subscription refresh adds backend work and should be checked for
+  acceptable latency on the CM5. The worker does not replay failed actions.
+- The main loop detects failures in its callbacks and worker, not every possible
+  fault inside GPIO/backend library threads. There is no hardware input watchdog.
+- The running device is unchanged until you deliberately deploy this version and
+  migrate its startup configuration.

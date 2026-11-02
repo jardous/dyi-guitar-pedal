@@ -91,5 +91,6 @@ one-second threshold.
   can affect an in-circuit reading, so isolate one resistor lead if necessary.
 - Test repeated presses, releases, overlapping presses, and long holds. Confirm
   each physical action produces the intended single MIDI action.
-- Hardware filtering does not fix the unmatched-release startup bug described in
-  [the review](review.md). Leave software debounce enabled.
+- The updated controller ignores unmatched startup releases in software, as
+  described in [the review](review.md); the RC filter is not a replacement for that
+  guard. Leave software debounce enabled.
