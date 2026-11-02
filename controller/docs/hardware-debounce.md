@@ -3,19 +3,18 @@
 The original pedal uses **one series resistor and one capacitor per button**.
 The capacitor is marked **104**, meaning **100 nF (0.1 uF)**, not 1 uF. A normally
 open momentary switch and its series resistor form a branch in parallel with the
-capacitor. Both series resistors appear to be **1 kOhm**; this is a visual estimate,
-not a confirmed measurement.
+capacitor. Both series resistors are **1 kOhm**, confirmed by the pedal's owner.
 
 ## Original pedal wiring: physical 40-pin header numbers
 
 ```text
   Pin 13 (GPIO27) ----o----------|| C1 100 nF---------o----- Pin 9 (GND)
                       |                               |
-                      +---------SW1----R1 ~1k---------+
+                      +---------SW1----R1 1k----------+
 
   Pin 37 (GPIO26) ----o----------|| C2 100 nF---------o----- Pin 39 (GND)
                       |                               |
-                      +---------SW2----R2 ~1k---------+
+                      +---------SW2----R2 1k----------+
 ```
 
 `SW1` and `SW2` are normally open and close when pressed. R1/R2 are **in series
@@ -25,8 +24,8 @@ discrete part in the drawn filter.
 
 | Channel | GPIO header pin | BCM GPIO | Ground header pin | Capacitor | Series resistor |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 13 | 27 | 9 | C1: 104 / 100 nF | R1: likely 1 kOhm; verify |
-| 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: likely 1 kOhm; verify |
+| 1 | 13 | 27 | 9 | C1: 104 / 100 nF | R1: 1 kOhm |
+| 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: 1 kOhm |
 
 Both ground pins connect to board ground. **Do not join the GPIO27 and GPIO26
 signal nodes.** These physical pin numbers refer to the standard 40-pin header;
@@ -44,7 +43,7 @@ No pin-mapping changes are required.
 | Quantity | Part | Purpose |
 | --- | --- | --- |
 | 2 | Normally open momentary footswitch | Pulls its input toward ground through the series resistor |
-| 2 | Resistor, likely 1 kOhm; verify | Limits capacitor discharge current through the switch |
+| 2 | 1 kOhm resistor | Limits capacitor discharge current through the switch |
 | 2 | 104 / 100 nF capacitor | Connected from its input to ground |
 
 The marking `104` specifies capacitance only; it does not identify dielectric or
@@ -57,7 +56,7 @@ for this 3.3 V circuit. No buffer IC or 1 uF capacitor is specified here.
 - **Pressed:** The switch discharges the capacitor through its series resistor.
   This limits the initial capacitor discharge current to approximately `3.3 V / R`
   for a fully charged capacitor, neglecting other small resistances: approximately
-  **3.3 mA** if R is 1 kOhm.
+  **3.3 mA** with the 1 kOhm resistor.
 - The pull-up and series resistor form a voltage divider while pressed. The
   steady voltage is approximately `3.3 V * R / (Rpullup + R)` and must be below the
   GPIO's specified LOW threshold. A series resistor that is too large can prevent
@@ -67,9 +66,9 @@ for this 3.3 V circuit. No buffer IC or 1 uF capacitor is specified here.
   when calculating the effective `Rpullup`.
 - For illustration only, a 10 kOhm effective pull-up and 100 nF capacitor give a
   **1 ms release time constant**. That pull-up value has not been established for
-  this pedal; the actual timing cannot be specified until the series resistor
-  values and pull-up configuration are confirmed. With a 1 kOhm series resistor,
-  the press time constant is at most approximately **0.1 ms** for nominal 100 nF.
+  this pedal; the actual timing depends on the effective pull-up resistance.
+  With the 1 kOhm series resistor, the press time constant is at most approximately
+  **0.1 ms** for nominal 100 nF.
 
 Keep `bounce_time=0.05` enabled. This RC network reduces bounce but does not
 guarantee a single clean edge for every switch, and it adds no separate hysteresis
@@ -86,8 +85,8 @@ one-second threshold.
 - Place the capacitor near the GPIO interface. Keep switch wiring away from audio
   inputs, switching regulators, and I2S lines; use a signal/ground twisted pair
   per switch. This filter is not ESD protection for external cables.
-- Confirm the resistor values and pull-up configuration. Check HIGH when released
-  and a valid LOW when pressed, then inspect bounce with an oscilloscope or logic
+- Check the pull-up configuration. Verify HIGH when released and a valid LOW when
+  pressed, then inspect bounce with an oscilloscope or logic
   analyzer if available. If measuring resistance, power off first; parallel paths
   can affect an in-circuit reading, so isolate one resistor lead if necessary.
 - Test repeated presses, releases, overlapping presses, and long holds. Confirm

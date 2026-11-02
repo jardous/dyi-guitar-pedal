@@ -90,8 +90,7 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 - momentary footswitch (soft-touch recommended)
 - Original hardware debounce: one 104 / 100 nF capacitor across physical header
   pins 13/9 and another across 37/39. Each has a parallel switch-plus-series-resistor
-  branch; the series resistors appear to be 1k, pending measurement. Keep software
-  debounce.
+  branch with a confirmed 1k resistor. Keep software debounce.
 - See the [hardware debounce schematic](controller/docs/hardware-debounce.md) for
   wiring, the parts list, and timing limits. Both inputs match the current script's
   GPIO27/GPIO26 mapping.
