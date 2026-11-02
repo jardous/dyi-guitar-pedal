@@ -88,10 +88,12 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 
 ## Footswitches
 - momentary footswitch (soft-touch recommended)
-- Hardware debounce: per switch, one 10k pull-up to 3.3 V and one 1 uF capacitor
-  from the GPIO node to ground, in parallel with the switch. Keep software debounce.
+- Original hardware debounce: one 104 / 100 nF capacitor across physical header
+  pins 5/9 and another across 37/39. Each has a parallel switch-plus-series-resistor
+  branch; resistor values are not yet confirmed. Keep software debounce.
 - See the [hardware debounce schematic](controller/docs/hardware-debounce.md) for
-  wiring, the parts list, and timing limits.
+  wiring, the parts list, timing limits, and the first-button GPIO mismatch with
+  the current script.
 
 ## Output to Mixer MIC IN (XLR)
 - 1× output transformer (line → mic)

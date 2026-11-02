@@ -22,7 +22,11 @@ apply 5 V to a GPIO input.
 
 For the circuit schematic using **one resistor and one capacitor per button**,
 component values, and wiring notes, see [hardware debounce](docs/hardware-debounce.md).
-The RC filter preserves the active-low mappings; keep software debounce enabled.
+The original pedal uses **104 / 100 nF capacitors** from physical pins **5 to 9**
+and **37 to 39**, with a switch and series resistor in parallel with each capacitor.
+Resistor values remain to be confirmed. **The first input is GPIO3 / pin 5, which
+does not match this script's GPIO27 / pin 13**; the second input matches GPIO26.
+See the wiring notes before changing code or hardware. Keep software debounce enabled.
 
 - Actions fire on **release**, including long-press actions.
 - Software debounce is set to 50 ms for each button.
