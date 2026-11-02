@@ -20,6 +20,10 @@ apply 5 V to a GPIO input.
 | 1 | 27 | Note 10 | Note 20 |
 | 2 | 26 | Note 30 | Note 40 |
 
+For wiring, component values, and an RC/Schmitt-trigger circuit schematic, see
+[hardware debounce](docs/hardware-debounce.md). It also includes a minimal RC-only
+alternative; both preserve the active-low button mappings.
+
 - Actions fire on **release**, including long-press actions.
 - Software debounce is set to 50 ms for each button.
 - Messages use MIDI channel 1 (`mido`'s default, zero-based channel 0).
