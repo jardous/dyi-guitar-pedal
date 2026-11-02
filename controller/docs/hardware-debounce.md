@@ -9,7 +9,7 @@ not a confirmed measurement.
 ## Original pedal wiring: physical 40-pin header numbers
 
 ```text
-  Pin 5 (GPIO3)  -----o----------|| C1 100 nF---------o----- Pin 9 (GND)
+  Pin 13 (GPIO27) ----o----------|| C1 100 nF---------o----- Pin 9 (GND)
                       |                               |
                       +---------SW1----R1 ~1k---------+
 
@@ -25,23 +25,19 @@ discrete part in the drawn filter.
 
 | Channel | GPIO header pin | BCM GPIO | Ground header pin | Capacitor | Series resistor |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 5 | 3 | 9 | C1: 104 / 100 nF | R1: likely 1 kOhm; verify |
+| 1 | 13 | 27 | 9 | C1: 104 / 100 nF | R1: likely 1 kOhm; verify |
 | 2 | 37 | 26 | 39 | C2: 104 / 100 nF | R2: likely 1 kOhm; verify |
 
-Both ground pins connect to board ground. **Do not join the GPIO3 and GPIO26
+Both ground pins connect to board ground. **Do not join the GPIO27 and GPIO26
 signal nodes.** These physical pin numbers refer to the standard 40-pin header;
 verify its orientation and the carrier board's routing before wiring.
 
-## Important: first-button mismatch with the current script
+## Matching the current script
 
-`controller.py` currently configures **BCM GPIO27** for button 1, which is physical
-**pin 13**, not pin 5. Button 2 uses BCM GPIO26 / physical pin 37 and matches the
-reported wiring. The script has not been changed to resolve this discrepancy.
-
-Confirm whether the first switch should remain on GPIO3 or be wired to GPIO27
-before changing code or hardware. GPIO3 is also **I2C SDA**: a switch to ground
-on that line can interfere with an enabled I2C bus and connected devices. Check
-the carrier/Codec Zero wiring and configuration before using it as a button.
+Both inputs match `controller.py`: button 1 uses **BCM GPIO27 / physical pin 13**,
+and button 2 uses **BCM GPIO26 / physical pin 37**. Physical pins **9 and 39** are
+ground. The script enables each input's internal pull-up with `pull_up=True`.
+No pin-mapping changes are required.
 
 ## Parts for the two filters
 
@@ -75,13 +71,6 @@ for this 3.3 V circuit. No buffer IC or 1 uF capacitor is specified here.
   values and pull-up configuration are confirmed. With a 1 kOhm series resistor,
   the press time constant is at most approximately **0.1 ms** for nominal 100 nF.
 
-**Check GPIO3's I2C pull-up in particular:** if the carrier has a 1.8 kOhm pull-up
-to 3.3 V, a 1 kOhm series switch resistor gives a pressed voltage of approximately
-**1.18 V** (`3.3 * 1 / (1.8 + 1)`). That must not be assumed to be a valid LOW.
-The carrier's actual pull-up value is not established here; verify it and the
-GPIO input specification before using this wiring. A weak internal pull-up alone
-produces a much lower pressed voltage with the same series resistor.
-
 Keep `bounce_time=0.05` enabled. This RC network reduces bounce but does not
 guarantee a single clean edge for every switch, and it adds no separate hysteresis
 stage. Check the carrier/SoC input requirements for slow edges and measure the
@@ -92,8 +81,8 @@ one-second threshold.
 
 - Power off before wiring. Use **3.3 V logic only**, with a common CM5/carrier
   ground. Do not connect GPIOs or pull-ups to 5 V or the analog supply rails.
-- Verify the first-button GPIO discrepancy and possible I2C conflict before
-  copying the original wiring to the current CM5 setup.
+- Verify the header orientation: GPIO27 is physical pin 13 and GPIO26 is pin 37;
+  use physical pins 9 and 39 for the respective ground connections.
 - Place the capacitor near the GPIO interface. Keep switch wiring away from audio
   inputs, switching regulators, and I2S lines; use a signal/ground twisted pair
   per switch. This filter is not ESD protection for external cables.
