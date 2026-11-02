@@ -1,95 +1,15 @@
 # Hardware debounce for the footswitches
 
-Use one filter per **normally open, momentary** footswitch. Both circuits below
-preserve the controller's active-low behavior: released = HIGH, pressed = LOW.
-Keep the existing `bounce_time=0.05` software debounce enabled initially.
+The hardware filter uses **one resistor and one capacitor per button**, with no
+buffer IC or additional series resistor. Use a **normally open, momentary**
+footswitch. The circuit preserves active-low behavior: released = HIGH,
+pressed = LOW. Keep the existing `bounce_time=0.05` software debounce enabled.
 
-These are starting designs, not measurements from the assembled pedal. Check the
-actual switches with an oscilloscope or logic analyzer before relying on hardware
-debounce alone.
-
-## Recommended: RC filter plus Schmitt-trigger buffer
-
-Use a **non-inverting** Schmitt-trigger buffer to turn the capacitor's slow voltage
-ramps into clean logic edges. One
-[SN74LVC2G17](https://www.ti.com/product/SN74LVC2G17) provides two independent
-channels, enough for both buttons. Power it from the same **3.3 V** rail as the
-CM5 GPIO interface, never 5 V.
-
-### Schematic: one channel, repeated for each switch
+## Schematic: repeat once for each button
 
 ```text
-                         R1 10k             R2 1k
-  CM5 3.3 V ------------/\/\/\-----o-------/\/\/\-------o------ A
-                                  |                    |      |\
-                                  |                    |      | \    U1 channel
-                             SW1  o                 C1 ===     |  >--- Y ---> GPIO
-                                   /              1 uF |      | /    non-inverting
-                                  o                    |      |/     Schmitt buffer
-                                  |                    |
-  CM5 GND ------------------------o--------------------o
-
-  U1 supply (shared by both channels):
-
-  CM5 3.3 V --------o---------------- U1 VCC
-                    |
-                C3 === 100 nF
-                    |
-  CM5 GND ----------o---------------- U1 GND
-```
-
-`SW1` closes to ground when pressed. The capacitor is on the **buffer-input side
-of R2**; do not connect it to the buffer output. Use the selected package's
-datasheet to identify A, Y, VCC, and GND pins; the drawing uses signal names, not
-package pin numbers.
-
-| Channel | Switch | Pull-up | Series resistor | Filter capacitor | Buffer connection |
-| --- | --- | --- | --- | --- | --- |
-| 1 | SW1 | R1: 10 kOhm | R2: 1 kOhm | C1: 1 uF | 1A -> 1Y -> BCM GPIO 27 |
-| 2 | SW2 | R3: 10 kOhm | R4: 1 kOhm | C2: 1 uF | 2A -> 2Y -> BCM GPIO 26 |
-
-Share the 3.3 V supply, ground, and U1 between channels, but **do not share their
-RC nodes or join their outputs**. If only one channel is populated, tie the
-unused buffer input to ground and leave its output unconnected.
-
-### Parts for both buttons
-
-| Quantity | Part | Purpose |
-| --- | --- | --- |
-| 2 | Normally open momentary footswitch | Connects the switch node to ground |
-| 2 | 10 kOhm resistor, 1% | External pull-up |
-| 2 | 1 kOhm resistor, 1% | Limits capacitor discharge current and sets press filtering |
-| 2 | 1 uF ceramic capacitor, X7R, rated >= 10 V | RC filtering; check effective capacitance at 3.3 V |
-| 1 | SN74LVC2G17 dual non-inverting Schmitt buffer | Clean, hysteretic logic edges |
-| 1 | 100 nF ceramic capacitor | U1 supply decoupling, mounted close to VCC/GND |
-
-### Operation and timing
-
-- **Released:** C1 charges through R1 + R2; the buffer output goes HIGH.
-- **Pressed:** SW1 grounds the R1/R2 junction; C1 discharges through R2 and the
-  buffer output goes LOW. The switch sinks about 0.33 mA continuously through R1,
-  plus an initial capacitor discharge current of approximately 3.3 mA through R2.
-- Nominal time constants are **11 ms on release** (`11 kOhm * 1 uF`) and
-  **1 ms on press** (`1 kOhm * 1 uF`). These are RC time constants, not guaranteed
-  debounce intervals or exact logic-transition delays.
-- The buffer's hysteresis prevents repeated transitions around a single input
-  threshold, but sufficiently long contact bounces can still cross both
-  thresholds. Verify the actual waveform. Increasing C1 to 2.2 uF increases both
-  time constants by 2.2x if more filtering is needed, at the cost of latency.
-- Filtering delays press and release edges differently, so measured hold duration
-  can shift by a few milliseconds near the one-second threshold.
-
-The existing `pull_up=True` setting can remain: the internal pull-up is on the
-buffer's **output**, not on the RC node, and only adds a small load when LOW.
-No controller code changes are required for this non-inverting circuit.
-
-## Minimal alternative: RC only
-
-If omitting U1, connect the filtered node directly to the GPIO:
-
-```text
-                         R1 10k             R2 1k
-  CM5 3.3 V ------------/\/\/\-----o-------/\/\/\-------o----> BCM GPIO 27 or 26
+                         R1 10k
+  CM5 3.3 V ------------/\/\/\-----o--------------------o----> BCM GPIO
                                   |                    |
                              SW1  o                 C1 === 1 uF
                                    /                   |
@@ -98,29 +18,65 @@ If omitting U1, connect the filtered node directly to the GPIO:
   CM5 GND ------------------------o--------------------o
 ```
 
-Repeat for the other button. R2 prevents the charged capacitor being shorted
-directly through the switch contacts. This is useful noise/bounce filtering, but
-it does not provide a separate, specified Schmitt-trigger stage; keep software
-debounce enabled and check the carrier/SoC input requirements for slow edges.
+The resistor pulls the GPIO node up to 3.3 V. The capacitor and switch are both
+connected between that same GPIO node and ground, **in parallel**. The capacitor
+is not in series with the GPIO, and the resistor is not in series with the switch.
 
-The GPIO's enabled internal pull-up changes the nominal RC timing and produces a
-small nonzero pressed voltage through R2. Verify the LOW voltage and actual edge
-timing on your board. The Schmitt-buffer version avoids this interaction at the
-filter node and is preferred for a more predictable input interface.
+| Channel | Switch | Pull-up to 3.3 V | Capacitor to GND | GPIO node |
+| --- | --- | --- | --- | --- |
+| 1 | SW1 | R1: 10 kOhm | C1: 1 uF | BCM GPIO 27 |
+| 2 | SW2 | R2: 10 kOhm | C2: 1 uF | BCM GPIO 26 |
+
+The two channels share only the supply and ground; **do not join their GPIO
+nodes**. These are BCM numbers, not connector pin numbers. Confirm routing on
+your CM5 carrier board before wiring.
+
+## Parts for both buttons
+
+| Quantity | Part | Purpose |
+| --- | --- | --- |
+| 2 | Normally open momentary footswitch | Grounds its GPIO node when pressed |
+| 2 | 10 kOhm resistor, 1% | External pull-up |
+| 2 | 1 uF ceramic capacitor, X7R, rated >= 10 V | RC filtering; check effective capacitance at 3.3 V |
+
+The resistor/capacitor values are starting recommendations, not measurements from
+the assembled pedal.
+
+## Operation and timing
+
+- **Pressed:** The switch grounds the GPIO and discharges the capacitor directly
+  through its contacts. The external pull-up supplies about **0.33 mA** while held.
+  There is also a brief capacitor-discharge current pulse, limited by contact,
+  wiring, and capacitor resistance, **not by the 10 kOhm pull-up**. Check that the
+  chosen switch tolerates this capacitive load; avoid arbitrarily large capacitors.
+- **Released:** The capacitor charges through the pull-up, slowing the return to
+  HIGH and helping bridge short contact openings during bounce.
+- With the external resistor alone, the nominal release time constant is
+  **10 ms** (`10 kOhm * 1 uF`). This is not a guaranteed debounce interval or the
+  exact GPIO switching delay. Closing the switch is much faster than releasing it.
+- The existing `pull_up=True` can remain enabled, but its internal pull-up is in
+  parallel with the external resistor. The actual resistance and release time
+  constant will therefore be smaller than the external-only calculation.
+- Filtering delays release more than press, so the measured hold duration can
+  increase slightly near the one-second threshold.
+
+No controller code changes are required. Keep the existing software debounce:
+this simple RC network reduces bounce but does not guarantee one clean edge for
+every switch. It adds no separate hysteresis stage; check the carrier/SoC input
+requirements for slow edges and verify the actual waveform.
 
 ## Wiring and verification
 
 - Power off before wiring. Use **3.3 V only**, with a common CM5/carrier ground.
-  Do not connect a GPIO, buffer output, or pull-up to 5 V or the pedal's analog
-  supply rails. Confirm BCM-to-connector routing on the actual carrier board.
-- Put the RC parts and buffer close to the GPIO interface. Keep footswitch wires
+  Do not connect a GPIO or pull-up to 5 V or the pedal's analog supply rails.
+- Place the capacitor and pull-up near the GPIO interface. Keep footswitch wiring
   away from audio inputs, switching regulators, and I2S lines; use a signal/ground
-  twisted pair for each switch. This circuit is not a substitute for appropriate
-  ESD protection on externally accessible or long cables.
-- Before connecting a buffer output to the CM5, check its supply and output
-  voltages. Then verify HIGH when released and LOW when pressed on each channel.
-- Check repeated presses, releases, overlapping presses, and long holds. Verify
+  twisted pair per switch. This filter is not ESD protection for external cables.
+- Check the supply and node voltage before connecting to the CM5. Verify HIGH
+  when released and LOW when pressed, then inspect bounce with an oscilloscope or
+  logic analyzer if available.
+- Test repeated presses, releases, overlapping presses, and long holds. Confirm
   that each physical action produces the intended single MIDI action.
-- Start with the existing 50 ms software debounce. Reduce it only after measured
-  testing; hardware filtering does not fix the controller's unmatched-release
-  startup bug described in [the review](review.md).
+- Leave the 50 ms software debounce enabled unless measurements justify changing
+  it. Hardware filtering does not fix the unmatched-release startup bug described
+  in [the review](review.md).

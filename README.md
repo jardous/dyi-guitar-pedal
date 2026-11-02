@@ -88,10 +88,10 @@ wiper (pot middle) ---||---o----> AUX IN (Codec Zero)
 
 ## Footswitches
 - momentary footswitch (soft-touch recommended)
-- Optional hardware debounce: per switch, a 10k pull-up, 1k series resistor, and
-  1 uF capacitor; a shared 3.3 V dual Schmitt-trigger buffer is recommended.
+- Hardware debounce: per switch, one 10k pull-up to 3.3 V and one 1 uF capacitor
+  from the GPIO node to ground, in parallel with the switch. Keep software debounce.
 - See the [hardware debounce schematic](controller/docs/hardware-debounce.md) for
-  wiring, the complete parts list, an RC-only alternative, and timing limits.
+  wiring, the parts list, and timing limits.
 
 ## Output to Mixer MIC IN (XLR)
 - 1× output transformer (line → mic)

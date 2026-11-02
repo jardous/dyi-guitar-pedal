@@ -20,9 +20,9 @@ apply 5 V to a GPIO input.
 | 1 | 27 | Note 10 | Note 20 |
 | 2 | 26 | Note 30 | Note 40 |
 
-For wiring, component values, and an RC/Schmitt-trigger circuit schematic, see
-[hardware debounce](docs/hardware-debounce.md). It also includes a minimal RC-only
-alternative; both preserve the active-low button mappings.
+For the circuit schematic using **one resistor and one capacitor per button**,
+component values, and wiring notes, see [hardware debounce](docs/hardware-debounce.md).
+The RC filter preserves the active-low mappings; keep software debounce enabled.
 
 - Actions fire on **release**, including long-press actions.
 - Software debounce is set to 50 ms for each button.
